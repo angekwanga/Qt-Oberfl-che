@@ -83,7 +83,7 @@ Stop Network::getStopById(std::string stopId) {
 std::vector<StopTime> Network::searchStopTimesForTrip(std::string needle, std::string tripId) {
     std::vector<StopTime> result;
     for (auto stopTime : stopTimes) {
-      // Check if stop belongs to trip and matches filter if given
+      // Check if stop belongs to trip and matches filter if given.
       if (stopTime.tripId == tripId && (needle.empty() || stops.at(stopTime.stopId).name.find(needle) != std::string::npos)) {
         result.push_back(stopTime);
       }
