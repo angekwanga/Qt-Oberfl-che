@@ -1,11 +1,13 @@
 #include "network.h"
 #include "csv.h"
-#include <iostream>
 #include <algorithm>
-#include <map>
-#include <set>
-#include <cmath>
 #include <queue>
+#include <unordered_map>
+#include <unordered_set>
+#include <iostream>
+#include <tuple>
+#include <cctype>
+#include <locale>
 
 namespace bht {
 
@@ -18,16 +20,178 @@ Network::Network(std::string directory) {
   readPathways(directory + "/pathways.txt");
   readRoutes(directory + "/routes.txt");
   readShapes(directory + "/shapes.txt");
-  readStopTimes(directory + "/stop_times.txt");
   readStops(directory + "/stops.txt");
+  readStopTimes(directory + "/stop_times.txt");
   readTransfers(directory + "/transfers.txt");
   readTrips(directory + "/trips.txt");
 }
 
-std::vector<Stop> Network::search(std::string needle) {
+std::vector<StopTime> Network::getTravelPlanDepartingAt(const std::string& fromStopId, 
+                                                        const std::string& toStopId, 
+                                                        const GTFSTime& departureTime) const {
+    // Check if stops exist
+    if (stops.find(fromStopId) == stops.end() || stops.find(toStopId) == stops.end()) {
+        return {}; // Return empty if either stop doesn't exist
+    }
+    
+    if (fromStopId == toStopId) {
+        return {};
+    }
+
+    // Structure pour stocker les informations de chemin
+    struct PathInfo {
+        int arrivalTime;
+        std::string stopId;
+        std::vector<StopTime> path;
+        
+        // Opérateur de comparaison pour priority_queue (min-heap basé sur le temps d'arrivée)
+        bool operator>(const PathInfo& other) const {
+            return arrivalTime > other.arrivalTime;
+        }
+    };
+
+    // Priority queue pour Dijkstra avec contraintes de temps
+    std::priority_queue<PathInfo, std::vector<PathInfo>, std::greater<PathInfo>> pq;
+
+    std::unordered_map<std::string, int> bestTime; // meilleur temps d'arrivée pour chaque arrêt
+    
+    // Convertir le temps de départ en minutes pour faciliter la comparaison
+    int departureMinutes = departureTime.hour * 60 + departureTime.minute;
+    
+    // Commencer avec l'arrêt initial
+    pq.push({departureMinutes, fromStopId, {}});
+    bestTime[fromStopId] = departureMinutes;
+    
+    while (!pq.empty()) {
+        PathInfo current = pq.top();
+        pq.pop();
+        
+        // Ignorer si nous avons trouvé un meilleur chemin vers cet arrêt
+        if (bestTime.count(current.stopId) && bestTime[current.stopId] < current.arrivalTime) {
+            continue;
+        }
+        
+        // Vérifier si nous avons atteint la destination
+        if (current.stopId == toStopId) {
+            return current.path;
+        }
+        
+        // Obtenir tous les prochains départs possibles depuis l'arrêt actuel
+        GTFSTime currentGTFSTime = {
+            static_cast<unsigned char>(current.arrivalTime / 60),
+            static_cast<unsigned char>(current.arrivalTime % 60),
+            0
+        };
+        
+        auto nextDepartures = getNextDeparturesFrom(current.stopId, currentGTFSTime);
+        
+        for (const auto& departure : nextDepartures) {
+            // Obtenir tous les arrêts sur ce voyage après l'arrêt actuel
+            auto range = tripStopTimes.equal_range(departure.tripId);
+            std::vector<StopTime> tripStops;
+            
+            for (auto it = range.first; it != range.second; ++it) {
+                tripStops.push_back(it->second);
+            }
+            
+            std::sort(tripStops.begin(), tripStops.end(), 
+                      [](const StopTime& a, const StopTime& b) {
+                          return a.stopSequence < b.stopSequence;
+                      });
+            
+            // Trouver la position de l'arrêt actuel dans le voyage
+            for (size_t i = 0; i < tripStops.size(); ++i) {
+                if (tripStops[i].stopId == current.stopId && 
+                    tripStops[i].stopSequence == departure.stopSequence) {
+                    
+                    // Ajouter tous les arrêts suivants comme destinations possibles
+                    for (size_t j = i + 1; j < tripStops.size(); ++j) {
+                        const auto& nextStop = tripStops[j];
+                        int arrivalTime = nextStop.arrivalTime.hour * 60 + nextStop.arrivalTime.minute;
+                        
+                        // Ne considérer que si c'est un meilleur temps d'arrivée
+                        if (!bestTime.count(nextStop.stopId) || bestTime[nextStop.stopId] > arrivalTime) {
+                            bestTime[nextStop.stopId] = arrivalTime;
+                            
+                            // Construire le nouveau chemin
+                            std::vector<StopTime> newPath = current.path;
+                            
+                            // Ajouter le point de départ si c'est le premier segment
+                            if (newPath.empty()) {
+                                newPath.push_back(departure);
+                            }
+                            
+                            // Ajouter tous les arrêts intermédiaires jusqu'au suivant
+                            for (size_t k = i + 1; k <= j; ++k) {
+                                newPath.push_back(tripStops[k]);
+                            }
+                            
+                            pq.push({arrivalTime, nextStop.stopId, newPath});
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        
+        // Considérer aussi les transferts à l'arrêt actuel
+        auto transferStops = getStopsForTransfer(current.stopId);
+        for (const auto& transferStop : transferStops) {
+            if (transferStop.id != current.stopId) {
+                // Aucun temps de transfert supposé, peut immédiatement prendre le prochain départ
+                if (!bestTime.count(transferStop.id) || bestTime[transferStop.id] > current.arrivalTime) {
+                    bestTime[transferStop.id] = current.arrivalTime;
+                    pq.push({current.arrivalTime, transferStop.id, current.path});
+                }
+            }
+        }
+    }
+    
+    // Aucun chemin trouvé
+    return {};
+}
+
+bool Network::isTimeGreaterOrEqual(const GTFSTime& time1, const GTFSTime& time2) const {
+    int minutes1 = time1.hour * 60 + time1.minute;
+    int minutes2 = time2.hour * 60 + time2.minute;
+    return minutes1 >= minutes2;
+}
+
+std::vector<StopTime> Network::getNextDeparturesFrom(const std::string& stopId, const GTFSTime& afterTime) const {
+    std::vector<StopTime> departures;
+    
+    // Get all trips that stop at this station
+    auto tripRange = stopTrips.equal_range(stopId);
+    for (auto tripIt = tripRange.first; tripIt != tripRange.second; ++tripIt) {
+        const std::string& tripId = tripIt->second;
+        
+        // Get all stop times for this trip
+        auto stopRange = tripStopTimes.equal_range(tripId);
+        for (auto stopIt = stopRange.first; stopIt != stopRange.second; ++stopIt) {
+            const StopTime& stopTime = stopIt->second;
+            
+            // Check if this is the right stop and departure is after required time
+            if (stopTime.stopId == stopId && isTimeGreaterOrEqual(stopTime.departureTime, afterTime)) {
+                departures.push_back(stopTime);
+            }
+        }
+    }
+    
+    // Sort by departure time
+    std::sort(departures.begin(), departures.end(), 
+              [](const StopTime& a, const StopTime& b) {
+                  int timeA = a.departureTime.hour * 60 + a.departureTime.minute;
+                  int timeB = b.departureTime.hour * 60 + b.departureTime.minute;
+                  return timeA < timeB;
+              });
+    
+    return departures;
+}
+
+std::vector<Stop> Network::search(std::string needle) const {
   std::vector<Stop> result;
 
-  for (auto pair : stops) {
+  for (const std::pair<const std::string, Stop>& pair : stops) {
       if (pair.second.name.find(needle) != std::string::npos) {
           result.push_back(pair.second);
       }
@@ -36,319 +200,349 @@ std::vector<Stop> Network::search(std::string needle) {
   return result;
 }
 
-std::vector<Route> Network::getRoutes() {
-  std::vector<Route> result;
+std::vector<Route> Network::getRoutes() const {
+    std::vector<Route> result;
 
-  for (auto route : routes) {
-    result.push_back(route.second);
-  }
-
-  std::sort(result.begin(), result.end(), [] (const Route& lhs, const Route& rhs) {
-    return lhs.shortName < rhs.shortName;
-  });
-
-  return result;
-}
-
-std::string Network::getRouteDisplayName(Route route) {
-  std::string displayName = route.shortName;
-  if (!route.longName.empty()) {
-    displayName = displayName + " - " + route.longName;
-  }
-  return displayName;
-}
-
-std::vector<Trip> Network::getTripsForRoute(std::string routeId) {
-  std::vector<Trip> result;
-  for (auto trip : trips) {
-    if (trip.routeId == routeId) {
-      result.push_back(trip);
-    }
-  }
-  return result;
-}
-
-std::string Network::getTripDisplayName(Trip trip) {
-  return trip.shortName + " - " + trip.headsign;
-}
-
-std::vector<StopTime> Network::getStopTimesForTrip(std::string tripId) {
-  return searchStopTimesForTrip("", tripId);
-}
-
-Stop Network::getStopById(std::string stopId) {
-  return stops.at(stopId);
-}
-
-std::vector<StopTime> Network::searchStopTimesForTrip(std::string needle, std::string tripId) {
-    std::vector<StopTime> result;
-    for (auto stopTime : stopTimes) {
-      // Check if stop belongs to trip and matches filter if given.
-      if (stopTime.tripId == tripId && (needle.empty() || stops.at(stopTime.stopId).name.find(needle) != std::string::npos)) {
-        result.push_back(stopTime);
-      }
+    for (auto &route : routes) {
+        result.push_back(route.second);
     }
 
-    std::sort(result.begin(), result.end(), [] (const StopTime& lhs, const StopTime& rhs) {
-      return lhs.stopSequence - rhs.stopSequence;
+    std::sort(result.begin(), result.end(), [] (const Route& lhs, const Route& rhs) {
+        return lhs.shortName < rhs.shortName;
     });
 
     return result;
 }
 
-// AUFGABE 5a: Extended getStopsForTransfer to include zone_id
-std::vector<Stop> Network::getStopsForTransfer(const std::string& stopId) {
-  std::vector<Stop> result;
-  std::set<std::string> addedStops; // To avoid duplicates
-  
-  Stop stop = stops.at(stopId);
-  
-  // Add the original stop
-  result.push_back(stop);
-  addedStops.insert(stop.id);
-  
-  // Handle parent station logic (existing from Übungsblatt 4)
-  if (stop.locationType == LocationType_Stop && !stop.parentStation.empty()) {
-    // This is a generic stop / platform
-    stop = stops.at(stop.parentStation);
-    if (addedStops.find(stop.id) == addedStops.end()) {
-      result.push_back(stop);
-      addedStops.insert(stop.id);
+std::string Network::getRouteDisplayName(Route route) const {
+    std::string displayName = route.shortName;
+    if (!route.longName.empty()) {
+        displayName = displayName + " - " + route.longName;
     }
-  }
-
-  // Add stops that share the same parent station
-  auto range = stopStations.equal_range(stop.id);
-  for (auto iterator = range.first; iterator != range.second; ++iterator) {
-    if (addedStops.find(iterator->second) == addedStops.end()) {
-      result.push_back(stops[iterator->second]);
-      addedStops.insert(iterator->second);
-    }
-  }
-  
-  // NEW: Add stops that share the same zone_id
-  Stop originalStop = stops.at(stopId);
-  if (!originalStop.zoneId.empty()) {
-    auto zoneRange = zoneStops.equal_range(originalStop.zoneId);
-    for (auto iterator = zoneRange.first; iterator != zoneRange.second; ++iterator) {
-      if (addedStops.find(iterator->second) == addedStops.end()) {
-        result.push_back(stops[iterator->second]);
-        addedStops.insert(iterator->second);
-      }
-    }
-  }
-
-  return result;
+    return displayName;
 }
 
-std::unordered_set<std::string> Network::getNeighbors(const std::string& stopId) {
-  std::unordered_set<std::string> result;
-
-  // Add transfer stations
-  std::vector<Stop> transfers = getStopsForTransfer(stopId);
-  for (auto transfer : transfers) {
-    if (transfer.id != stopId && transfer.locationType == LocationType_Stop) {
-      result.insert(transfer.id);
+std::vector<Trip> Network::getTripsForRoute(std::string routeId) const {
+    std::vector<Trip> result;
+    for (auto &trip : trips) {
+        if (trip.routeId == routeId) {
+            result.push_back(trip);
+        }
     }
-  }
-
-  // Search neigbors by checking trips
-  auto tripsRange = stopTrips.equal_range(stopId);
-  for (auto iterator = tripsRange.first; iterator != tripsRange.second; ++iterator) {
-    auto scheduledTrip = scheduledTrips[iterator->second];
-    auto scheduledTripIterator = scheduledTrip->at(stopId);
-    if (scheduledTripIterator == scheduledTrip->end()) {
-      continue;
-    }
-    scheduledTripIterator++;
-    if (scheduledTripIterator != scheduledTrip->end()) {
-      result.insert(scheduledTripIterator->stopId);
-    }
-  }
-
-  return result;
+    return result;
 }
 
-std::vector<Stop> Network::getTravelPath(const std::string& fromStopId, const std::string& toStopId) {
-  // Initialization
-  std::map<std::string, float> dist;
-  std::map<std::string, std::string> previous;
-  std::set<std::string> q;
-  for (auto stop : stops) {
-    // initial distance from source to vertex v is set to infinite
-    dist[stop.first] = INFINITY;
-
-    // all nodes in the graph are unoptimized - thus are in Q
-    q.insert(stop.first);
-  }
-  
-  dist[fromStopId] = 0;
-  auto nextNode = [&dist](const std::string& a, const std::string& b) { 
-    float da = dist[a];
-    float db = dist[b];
-
-    return (da < db);
-  };
-
-  // Dijkstra according to http://www.gitta.info/Accessibiliti/de/html/Dijkstra_learningObject1.html
-  while (q.size() > 0) {
-    auto nextIter = std::min_element(q.begin(), q.end(), nextNode);
-    std::string u = *nextIter;
-    q.erase(u);
-
-    if (dist[u] == INFINITY) {
-      break;
-    }
-
-    for (auto v : getNeighbors(u)) {
-      float alt = dist[u] + 1.0; // Distance(u, v) set to 1.0 for now
-      if (alt < dist[v]) {
-        dist[v] = alt;
-        previous[v] = u;
-      }
-    }
-  }
-
-  // Test if we have a result
-  std::vector<Stop> result;
-  auto p = previous.find(toStopId);
-  while (p != previous.end()) {
-    result.push_back(stops.at(p->first));
-    p = previous.find(p->second);
-  }
-  std::reverse(result.begin(), result.end());
-  return result;
+std::string Network::getTripDisplayName(Trip trip) const {
+    return trip.shortName + " - " + trip.headsign;
 }
 
-// Helper function to compare times
-bool Network::isTimeGreaterOrEqual(const GTFSTime& time1, const GTFSTime& time2) {
-  if (time1.hour != time2.hour) {
-    return time1.hour >= time2.hour;
-  }
-  if (time1.minute != time2.minute) {
-    return time1.minute >= time2.minute;
-  }
-  return time1.second >= time2.second;
+std::vector<StopTime> Network::getStopTimesForTrip(std::string tripId) const {
+    return searchStopTimesForTrip("", tripId);
 }
 
-// AUFGABE 5b: getTravelPlanDepartingAt implementation
-std::vector<StopTime> Network::getTravelPlanDepartingAt(const std::string& fromStopId, 
-                                                        const std::string& toStopId, 
-                                                        const GTFSTime& departureTime) {
-  std::vector<StopTime> result;
-  
-  // Use modified Dijkstra with time constraints
-  std::map<std::string, GTFSTime> earliestArrival;
-  std::map<std::string, StopTime> previousStopTime;
-  std::priority_queue<std::pair<int, std::string>, 
-                     std::vector<std::pair<int, std::string>>, 
-                     std::greater<std::pair<int, std::string>>> pq;
-  
-  // Initialize
-  for (auto& stop : stops) {
-    earliestArrival[stop.first] = {23, 59, 59}; // Max time
-  }
-  
-  earliestArrival[fromStopId] = departureTime;
-  pq.push({departureTime.hour * 3600 + departureTime.minute * 60 + departureTime.second, fromStopId});
-  
-  while (!pq.empty()) {
-    auto current = pq.top();
-    pq.pop();
+Stop Network::getStopById(std::string stopId) const {
+    auto stopIt = stops.find(stopId);
+    if (stopIt != stops.end()) {
+        return stopIt->second;
+    }
+    // Return a default/empty stop if not found
+    return Stop{};
+}
+
+std::vector<StopTime> Network::searchStopTimesForTrip(std::string needle, std::string tripId) const {
+    std::vector<StopTime> result;
     
-    std::string currentStopId = current.second;
-    GTFSTime currentTime = earliestArrival[currentStopId];
+    // Convert needle to lowercase for case-insensitive search
+    std::string lowerNeedle = needle;
+    std::transform(lowerNeedle.begin(), lowerNeedle.end(), lowerNeedle.begin(), ::tolower);
     
-    if (currentStopId == toStopId) {
-      break;
-    }
-    
-    // Check all trips passing through this stop
-    auto tripsRange = stopTrips.equal_range(currentStopId);
-    for (auto iterator = tripsRange.first; iterator != tripsRange.second; ++iterator) {
-      std::string tripId = iterator->second;
-      
-      // Get all stop times for this trip
-      std::vector<StopTime> tripStopTimes = getStopTimesForTrip(tripId);
-      
-      // Find current stop in this trip
-      auto currentStopIt = std::find_if(tripStopTimes.begin(), tripStopTimes.end(),
-                                       [currentStopId](const StopTime& st) {
-                                         return st.stopId == currentStopId;
-                                       });
-      
-      if (currentStopIt != tripStopTimes.end()) {
-        // Check if we can catch this trip (departure time must be >= current time)
-        if (isTimeGreaterOrEqual(currentStopIt->departureTime, currentTime)) {
-          // Check all subsequent stops in this trip
-          for (auto nextStopIt = currentStopIt + 1; nextStopIt != tripStopTimes.end(); ++nextStopIt) {
-            std::string nextStopId = nextStopIt->stopId;
-            
-            // If this arrival time is better than what we have
-            if (isTimeGreaterOrEqual(earliestArrival[nextStopId], nextStopIt->arrivalTime)) {
-              earliestArrival[nextStopId] = nextStopIt->arrivalTime;
-              previousStopTime[nextStopId] = *nextStopIt;
-              
-              int timeInSeconds = nextStopIt->arrivalTime.hour * 3600 + 
-                                 nextStopIt->arrivalTime.minute * 60 + 
-                                 nextStopIt->arrivalTime.second;
-              pq.push({timeInSeconds, nextStopId});
+    // Use optimized multimap for faster lookup
+    auto range = tripStopTimes.equal_range(tripId);
+    for (auto it = range.first; it != range.second; ++it) {
+        const StopTime& stopTime = it->second;
+        auto stopIt = stops.find(stopTime.stopId);
+        if (stopIt != stops.end()) {
+            if (needle.empty()) {
+                result.push_back(stopTime);
+            } else {
+                // Convert stop name to lowercase for comparison
+                std::string lowerStopName = stopIt->second.name;
+                std::transform(lowerStopName.begin(), lowerStopName.end(), lowerStopName.begin(), ::tolower);
+                
+                if (lowerStopName.find(lowerNeedle) != std::string::npos) {
+                    result.push_back(stopTime);
+                }
             }
-          }
         }
-      }
+    }
+
+    std::sort(result.begin(), result.end(), [](const StopTime& lhs, const StopTime& rhs) {
+        return lhs.stopSequence < rhs.stopSequence;
+    });
+
+    return result;
+}
+
+// New methods for Aufgabe 5
+
+std::vector<Stop> Network::getStopsForTransfer(const std::string& stopId) const {
+    std::vector<Stop> result;
+    
+    // Check if stop exists
+    auto stopIt = stops.find(stopId);
+    if (stopIt == stops.end()) {
+        return result; // Return empty vector if stop doesn't exist
     }
     
-    // Also check transfer possibilities
-    std::vector<Stop> transfers = getStopsForTransfer(currentStopId);
-    for (auto& transfer : transfers) {
-      if (transfer.id != currentStopId) {
-        if (isTimeGreaterOrEqual(earliestArrival[transfer.id], currentTime)) {
-          earliestArrival[transfer.id] = currentTime;
-          // For transfers, we don't add to previousStopTime as it's not a real stop time
+    // Add the stop itself
+    result.push_back(stopIt->second);
+    
+    const Stop& stop = stopIt->second;
+    
+    // Method 1: Use parent_station relationship
+    if (stop.locationType == LocationType_Station) {
+        // If it's a station, find all platforms/tracks using multimap
+        auto range = stopsForTransferMap.equal_range(stopId);
+        for (auto it = range.first; it != range.second; ++it) {
+            auto childStopIt = stops.find(it->second);
+            if (childStopIt != stops.end()) {
+                const Stop& childStop = childStopIt->second;
+                if (childStop.id != stopId) {
+                    result.push_back(childStop);
+                }
+            }
         }
-      }
+    } else if (!stop.parentStation.empty()) {
+        // If it's a platform/track, find the parent station and all sibling platforms
+        // Add parent station
+        auto parentStopIt = stops.find(stop.parentStation);
+        if (parentStopIt != stops.end()) {
+            const Stop& parentStop = parentStopIt->second;
+            bool alreadyAdded = false;
+            for (const auto& existingStop : result) {
+                if (existingStop.id == parentStop.id) {
+                    alreadyAdded = true;
+                    break;
+                }
+            }
+            if (!alreadyAdded) {
+                result.push_back(parentStop);
+            }
+        }
+        
+        // Add all sibling platforms using multimap
+        auto range = stopsForTransferMap.equal_range(stop.parentStation);
+        for (auto it = range.first; it != range.second; ++it) {
+            auto siblingStopIt = stops.find(it->second);
+            if (siblingStopIt != stops.end()) {
+                const Stop& siblingStop = siblingStopIt->second;
+                if (siblingStop.id != stopId) {
+                    bool alreadyAdded = false;
+                    for (const auto& existingStop : result) {
+                        if (existingStop.id == siblingStop.id) {
+                            alreadyAdded = true;
+                            break;
+                        }
+                    }
+                    if (!alreadyAdded) {
+                        result.push_back(siblingStop);
+                    }
+                }
+            }
+        }
     }
-  }
-  
-  // Reconstruct path
-  if (previousStopTime.find(toStopId) != previousStopTime.end()) {
-    std::vector<StopTime> path;
-    std::string currentId = toStopId;
     
-    while (previousStopTime.find(currentId) != previousStopTime.end()) {
-      path.push_back(previousStopTime[currentId]);
-      
-      // Find previous stop in the same trip
-      std::string tripId = previousStopTime[currentId].tripId;
-      std::vector<StopTime> tripStopTimes = getStopTimesForTrip(tripId);
-      
-      auto currentIt = std::find_if(tripStopTimes.begin(), tripStopTimes.end(),
-                                   [currentId](const StopTime& st) {
-                                     return st.stopId == currentId;
-                                   });
-      
-      if (currentIt != tripStopTimes.begin()) {
-        currentIt--;
-        currentId = currentIt->stopId;
-      } else {
-        break;
-      }
+    // Method 2: Find stops with common prefix (for GTFS data without proper parent_station)
+    // Extract base station ID (everything before the first colon after the main ID)
+    std::string baseStationId = stopId;
+    size_t colonPos = stopId.find(':');
+    if (colonPos != std::string::npos) {
+        // Find the position after the third colon (typical pattern: de:region:station:...)
+        size_t count = 0;
+        for (size_t i = 0; i < stopId.length() && count < 3; ++i) {
+            if (stopId[i] == ':') {
+                count++;
+                if (count == 3) {
+                    baseStationId = stopId.substr(0, i);
+                    break;
+                }
+            }
+        }
     }
     
-    std::reverse(path.begin(), path.end());
-    result = path;
-  }
-  
-  return result;
+    // Find all stops that start with the base station ID
+    for (const auto& pair : stops) {
+        const std::string& otherStopId = pair.first;
+        const Stop& otherStop = pair.second;
+        
+        // Check if this stop shares the same base station ID and isn't already added
+        if (otherStopId != stopId && otherStopId.find(baseStationId) == 0) {
+            // Additional check: make sure it's really the same station
+            // (starts with baseStationId and next char is ':' or end of string)
+            if (otherStopId.length() == baseStationId.length() || 
+                (otherStopId.length() > baseStationId.length() && otherStopId[baseStationId.length()] == ':')) {
+                
+                bool alreadyAdded = false;
+                for (const auto& existingStop : result) {
+                    if (existingStop.id == otherStopId) {
+                        alreadyAdded = true;
+                        break;
+                    }
+                }
+                if (!alreadyAdded) {
+                    result.push_back(otherStop);
+                }
+            }
+        }
+    }
+    
+    // Method 3: Zone-based transfers (Aufgabe 5a) - MOST IMPORTANT according to the assignment
+    if (!stop.zoneId.empty()) {
+        auto range = zoneStops.equal_range(stop.zoneId);
+        for (auto it = range.first; it != range.second; ++it) {
+            auto zoneStopIt = stops.find(it->second);
+            if (zoneStopIt != stops.end()) {
+                const Stop& zoneStop = zoneStopIt->second;
+                if (zoneStop.id != stopId) {
+                    // Check if not already added
+                    bool alreadyAdded = false;
+                    for (const auto& existingStop : result) {
+                        if (existingStop.id == zoneStop.id) {
+                            alreadyAdded = true;
+                            break;
+                        }
+                    }
+                    if (!alreadyAdded) {
+                        result.push_back(zoneStop);
+                    }
+                }
+            }
+        }
+    }
+    
+    return result;
+}
+
+std::unordered_set<std::string> Network::getNeighbors(const std::string& stopId) const {
+    std::unordered_set<std::string> neighbors;
+    
+    // Use optimized multimap for faster lookup
+    auto tripRange = stopTrips.equal_range(stopId);
+    for (auto tripIt = tripRange.first; tripIt != tripRange.second; ++tripIt) {
+        const std::string& tripId = tripIt->second;
+        
+        // Get all stops for this trip in order using multimap
+        std::vector<StopTime> tripStops;
+        auto stopRange = tripStopTimes.equal_range(tripId);
+        for (auto stopIt = stopRange.first; stopIt != stopRange.second; ++stopIt) {
+            tripStops.push_back(stopIt->second);
+        }
+        
+        // Sort by stop sequence
+        std::sort(tripStops.begin(), tripStops.end(), 
+                  [](const StopTime& a, const StopTime& b) {
+                      return a.stopSequence < b.stopSequence;
+                  });
+        
+        // Find current stop and add next/previous stops
+        for (size_t i = 0; i < tripStops.size(); ++i) {
+            if (tripStops[i].stopId == stopId) {
+                // Add next stop
+                if (i + 1 < tripStops.size()) {
+                    neighbors.insert(tripStops[i + 1].stopId);
+                }
+                // Add previous stop
+                if (i > 0) {
+                    neighbors.insert(tripStops[i - 1].stopId);
+                }
+                break;
+            }
+        }
+    }
+    
+    // Add transfer possibilities (same station)
+    std::vector<Stop> transferStops = getStopsForTransfer(stopId);
+    for (const auto& transferStop : transferStops) {
+        if (transferStop.id != stopId) {
+            neighbors.insert(transferStop.id);
+        }
+    }
+    
+    return neighbors;
+}
+
+std::vector<Stop> Network::getTravelPath(const std::string& fromStopId, const std::string& toStopId) const {
+    // Check if stops exist
+    if (stops.find(fromStopId) == stops.end() || stops.find(toStopId) == stops.end()) {
+        return {}; // Return empty if either stop doesn't exist
+    }
+    
+    if (fromStopId == toStopId) {
+        return {stops.at(fromStopId)};
+    }
+    
+    // BFS for shortest path
+    std::queue<std::string> queue;
+    std::unordered_map<std::string, std::string> parent;
+    std::unordered_set<std::string> visited;
+    
+    queue.push(fromStopId);
+    visited.insert(fromStopId);
+    parent[fromStopId] = "";
+    
+    while (!queue.empty()) {
+        std::string current = queue.front();
+        queue.pop();
+        
+        if (current == toStopId) {
+            // Reconstruct path
+            std::vector<Stop> path;
+            std::string node = toStopId;
+            while (!node.empty()) {
+                auto stopIt = stops.find(node);
+                if (stopIt != stops.end()) {
+                    path.push_back(stopIt->second);
+                }
+                node = parent[node];
+            }
+            std::reverse(path.begin(), path.end());
+            return path;
+        }
+        
+        // Get neighbors using optimized method
+        std::unordered_set<std::string> neighbors = getNeighbors(current);
+        for (const std::string& neighbor : neighbors) {
+            if (visited.find(neighbor) == visited.end()) {
+                visited.insert(neighbor);
+                parent[neighbor] = current;
+                queue.push(neighbor);
+            }
+        }
+    }
+    
+    // No path found
+    return {};
 }
 
 NetworkScheduledTrip Network::getScheduledTrip(const std::string& tripId) const {
-  return *scheduledTrips.at(tripId);
+    std::vector<StopTime> tripStopTimes;
+    
+    // Use optimized multimap for faster lookup
+    auto range = this->tripStopTimes.equal_range(tripId);
+    for (auto it = range.first; it != range.second; ++it) {
+        tripStopTimes.push_back(it->second);
+    }
+    
+    std::sort(tripStopTimes.begin(), tripStopTimes.end(), 
+              [](const StopTime& a, const StopTime& b) {
+                  return a.stopSequence < b.stopSequence;
+              });
+    
+    return NetworkScheduledTrip(tripId, tripStopTimes);
 }
 
 void Network::readAgencies(std::string source) {
-  bht::CSVReader reader{source};
+  CSVReader reader{source};
   do {
     std::string id = reader.getField("agency_id");
     if (id.empty() == false) {
@@ -366,7 +560,7 @@ void Network::readAgencies(std::string source) {
 }
 
 void Network::readCalendarDates(std::string source) {
-  bht::CSVReader reader(source);
+  CSVReader reader(source);
   do {
     std::string id = reader.getField("service_id");
     if (id.empty() == false) {
@@ -381,7 +575,7 @@ void Network::readCalendarDates(std::string source) {
 }
 
 void Network::readCalendars(std::string source) {
-  bht::CSVReader reader(source);
+  CSVReader reader(source);
   do {
     std::string id = reader.getField("service_id");
     if (id.empty() == false) {
@@ -403,7 +597,7 @@ void Network::readCalendars(std::string source) {
 }
 
 void Network::readLevels(std::string source) {
-  bht::CSVReader reader(source);
+  CSVReader reader(source);
   do {
     std::string id = reader.getField("level_id");
     if (id.empty() == false) {
@@ -418,7 +612,7 @@ void Network::readLevels(std::string source) {
 }
 
 void Network::readPathways(std::string source) {
-  bht::CSVReader reader(source);
+  CSVReader reader(source);
   do {
     std::string id = reader.getField("pathway_id");
     if (id.empty() == false) {
@@ -441,7 +635,7 @@ void Network::readPathways(std::string source) {
 }
 
 void Network::readRoutes(std::string source) {
-  bht::CSVReader reader(source);
+  CSVReader reader(source);
   do {
     std::string id = reader.getField("route_id");
     if (id.empty() == false) {
@@ -461,7 +655,7 @@ void Network::readRoutes(std::string source) {
 }
 
 void Network::readShapes(std::string source) {
-  bht::CSVReader reader(source);
+  CSVReader reader(source);
   do {
     std::string id = reader.getField("shape_id");
     if (id.empty() == false) {
@@ -477,7 +671,7 @@ void Network::readShapes(std::string source) {
 }
 
 void Network::readStopTimes(std::string source) {
-  bht::CSVReader reader(source);
+  CSVReader reader(source);
   do {
     std::string id = reader.getField("trip_id");
     if (id.empty() == false) {
@@ -487,20 +681,22 @@ void Network::readStopTimes(std::string source) {
         parseTime(reader.getField("departure_time")),
         reader.getField("stop_id"),
         (unsigned int)std::stoi(reader.getField("stop_sequence")),
-        (EPickupType)std::stoi(reader.getField("pickup_type")),
-        (EDropOffType)std::stoi(reader.getField("drop_off_type")),
+        (EPickupType)std::stoi(reader.getField("pickup_type", "0")),
+        (EDropOffType)std::stoi(reader.getField("drop_off_type", "0")),
         reader.getField("stop_headsign") 
       };
       stopTimes.push_back(item);
-      tripStopTimes.insert(std::make_pair(item.tripId, item));
-      tripStops.insert(std::make_pair(item.tripId, item.stopId));
-      stopTrips.insert(std::make_pair(item.stopId, item.tripId));
+      
+      // Build optimized data structures (as recommended by professor)
+      stopTrips.insert({item.stopId, item.tripId});
+      tripStops.insert({item.tripId, item.stopId});
+      tripStopTimes.insert({item.tripId, item});
     }
   } while (reader.next());
 }
 
 void Network::readStops(std::string source) {
-  bht::CSVReader reader(source);
+  CSVReader reader(source);
   do {
     std::string id = reader.getField("stop_id");
     if (id.empty() == false) {
@@ -511,31 +707,32 @@ void Network::readStops(std::string source) {
         reader.getField("stop_desc"),
         std::stod(reader.getField("stop_lat")),
         std::stod(reader.getField("stop_lon")),
-        (LocationType)std::stoi(reader.getField("location_type")),
+        (LocationType)std::stoi(reader.getField("location_type", "0")),
         reader.getField("parent_station"),
-        (WheelchairAccessibility)std::stoi(reader.getField("wheelchair_boarding")),
+        (WheelchairAccessibility)std::stoi(reader.getField("wheelchair_boarding", "0")),
         reader.getField("platform_code"),
         reader.getField("level_id"),
         reader.getField("zone_id")
       };
       stops[id] = item;
-      if (item.locationType == LocationType_Stop && !item.parentStation.empty()) {
-        stopStations.insert(std::make_pair(item.parentStation, item.id));
-      } 
-      else {
-        stopStations.insert(std::make_pair(item.id, item.id));
+      
+      // Build transfer data structures (as recommended by professor)
+      if (item.locationType == LocationType_Station) {
+        stopsForTransferMap.insert({id, id});
+      } else if (!item.parentStation.empty()) {
+        stopsForTransferMap.insert({item.parentStation, id});
       }
       
-      // NEW: Add zone mapping for Übungsblatt 5
+      // Aufgabe 5a: Build zone-based transfer data structures
       if (!item.zoneId.empty()) {
-        zoneStops.insert(std::make_pair(item.zoneId, item.id));
+        zoneStops.insert({item.zoneId, id});
       }
     }
   } while (reader.next());
 }
 
 void Network::readTransfers(std::string source) {
-  bht::CSVReader reader(source);
+  CSVReader reader(source);
   do {
     std::string id = reader.getField("from_stop_id");
     if (id.empty() == false) {
@@ -546,7 +743,7 @@ void Network::readTransfers(std::string source) {
         reader.getField("to_route_id"),
         reader.getField("from_trip_id"),
         reader.getField("to_trip_id"),
-        (TransferType)std::stoi(reader.getField("transfer_type")),
+        (TransferType)std::stoi(reader.getField("transfer_type", "0")),
         (unsigned int)std::stoi(reader.getField("min_transfer_time", "0"))
       };
       transfers.push_back(item);
@@ -555,7 +752,7 @@ void Network::readTransfers(std::string source) {
 }
 
 void Network::readTrips(std::string source) {
-  bht::CSVReader reader(source);
+  CSVReader reader(source);
   do {
     std::string id = reader.getField("trip_id");
     if (id.empty() == false) {
@@ -565,22 +762,13 @@ void Network::readTrips(std::string source) {
         reader.getField("service_id"),
         reader.getField("trip_headsign"),
         reader.getField("trip_short_name"),
-        (TripDirection)std::stoi(reader.getField("direction_id")),
+        (TripDirection)std::stoi(reader.getField("direction_id", "0")),
         reader.getField("block_id"),
         reader.getField("shape_id"),
-        (WheelchairAccessibility)std::stoi(reader.getField("wheelchair_accessible")),
+        (WheelchairAccessibility)std::stoi(reader.getField("wheelchair_accessible", "0")),
         reader.getField("bikes_allowed") == "1",
       };
       trips.push_back(item);
-
-      std::vector<StopTime> selectedStopTimes;
-      auto range = tripStopTimes.equal_range(item.id);
-      for (auto iterator = range.first; iterator != range.second; ++iterator) {
-        selectedStopTimes.push_back(iterator->second);
-      }
-      std::sort(selectedStopTimes.begin(), selectedStopTimes.end());
-      std::shared_ptr<NetworkScheduledTrip> scheduledTrip{new NetworkScheduledTrip(item, selectedStopTimes)};
-      scheduledTrips[item.id] = scheduledTrip;
     }
   } while (reader.next());
 }

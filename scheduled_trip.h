@@ -1,8 +1,9 @@
 #pragma once
 
-#include <vector>
-#include <iterator>
 #include "types.h"
+#include <iterator>
+#include <vector>
+#include <string>
 
 namespace bht {
 
@@ -12,24 +13,32 @@ namespace bht {
  */
 class NetworkScheduledTrip {
   private:
-    // Trip data
-    Trip trip;
-
-    // Stops in this trip
-    std::vector<StopTime> stops;
+    std::string tripId;
+    std::vector<StopTime> stopTimes;
 
   public:
+    // Define properties for this iterator
+    using iterator_category = std::bidirectional_iterator_tag;
+    using difference_type   = int;
+    using value_type        = const StopTime;
+    using pointer           = const StopTime*; 
+    using reference         = const StopTime&;
+    
+    /**
+     * Constructor
+     */
+    NetworkScheduledTrip(const std::string& tripId, const std::vector<StopTime>& stopTimes);
+    
     /**
      * Define an iterator to navigate the stops of a scheduled trip
-    */
+     */
     class iterator {
       private:
-        // trip this iterator belongs to
         const NetworkScheduledTrip* trip;
-
-        // Current position of the iterator
-        size_t position;        
+        size_t index;
+        
       public:
+        // Iterator traits
         using iterator_category = std::bidirectional_iterator_tag;
         using difference_type   = int;
         using value_type        = const StopTime;
@@ -37,9 +46,9 @@ class NetworkScheduledTrip {
         using reference         = const StopTime&;
 
         /**
-         * Iterator constructor
+         * Constructor
          */
-        iterator(const NetworkScheduledTrip* trip, size_t position);
+        iterator(const NetworkScheduledTrip* trip, size_t index);
 
         /**
          * Move the iterator to the next stop in this trip
@@ -62,7 +71,7 @@ class NetworkScheduledTrip {
         /**
          * Return a pointer to the stop time the current iterator points to
          */
-        const StopTime* operator->();
+        const StopTime* operator->() const;
 
         /**
          * Return the referenced trip of the current stop 
@@ -84,32 +93,14 @@ class NetworkScheduledTrip {
     };
 
     /**
-     * Create a new instance of a trip
-     * You have to ensure that the stops are sorted
-     */
-    NetworkScheduledTrip(const Trip& trip, const std::vector<StopTime>& stops);
-    NetworkScheduledTrip(const NetworkScheduledTrip& other);
-    NetworkScheduledTrip(NetworkScheduledTrip&& other);
-
-    /**
-     * Return trip data associated with the scheduled trip
-     */
-    const Trip& getTrip() const;
-
-    /**
      * Create a new iterator representing the start of a trip
      */
     iterator begin() const;
- 
+
     /**
      * Create a new iterator pointing beyond the last element of the trip
      */
     iterator end() const;
-
-    /**
-     * Create a new iterator pointing to the given stop (will return end if not found)
-     */
-    iterator at(const std::string& stopId) const;
 };
 
 }

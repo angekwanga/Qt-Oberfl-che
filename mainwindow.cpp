@@ -1,267 +1,269 @@
+#include <iostream>
 #include "mainwindow.h"
-#include <QApplication>
-#include <QTime>
-#include <QDir>
-#include <QDebug>
+#include "ui_mainwindow.h"
+#include "config.h"
+
+#ifndef GTFS_DIRECTORY_PATH
+#error "Setzen Sie den Pfad zu Ihrem GTFS-Verzeichnis in Zeile 5 in config.h und kommentieren Sie die Zeile ein"
+#endif
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
-    , network(nullptr)
+    , ui(new Ui::MainWindow)
+    , myNetwork(GTFS_DIRECTORY_PATH)
+    , scheduleModel(myNetwork, this)  // Modèle pour l'onglet Fahrplan
+    , routeModel(myNetwork, this)     // Modèle pour l'onglet Routenplaner
 {
-    // Initialize network with GTFS data
-    QString dataPath = QDir::currentPath() + "/GTFSShort";
-    if (!QDir(dataPath).exists()) {
-        dataPath = QDir::currentPath() + "/GTFSBbg";
-    }
+    ui->setupUi(this);
+    setWindowTitle("GUI-Routenplaner");
+
+    // Configurez les modes d'affichage
+    scheduleModel.setDisplayMode(StopTimesTableModel::SCHEDULE_MODE);      // Une seule colonne temps
+    routeModel.setDisplayMode(StopTimesTableModel::ROUTE_PLAN_MODE);       // Deux colonnes temps
+
+    // Assign models to elements - SÉPARÉS !
+    ui->routeComboBox->setModel(&routesModel);
+    ui->tripComboBox->setModel(&tripsModel);
     
-    try {
-        network = new bht::Network(dataPath.toStdString());
-    } catch (const std::exception& e) {
-        QMessageBox::critical(this, "Error", QString("Failed to load GTFS data: %1").arg(e.what()));
-        return;
-    }
+    // Utilisez des modèles différents pour chaque onglet
+    ui->stopTimeTableView->setModel(&routeModel);        // Routenplaner tab
+    ui->scheduleTableView->setModel(&scheduleModel);     // Fahrplan tab
     
-    setupUI();
+    // Setup new UI elements for Aufgabe 5
+    ui->fromStopComboBox->setModel(&fromStopsModel);
+    ui->toStopComboBox->setModel(&toStopsModel);
+
+    // Setup displayed routes
+    for (auto &item : myNetwork.getRoutes()) {
+        std::string displayName = myNetwork.getRouteDisplayName(item);
+        routes.push_back(std::make_pair(item.id, displayName));
+    }
+
+    // Sort the results by name
+    std::sort(routes.begin(),
+              routes.end(),
+              [](const std::pair<std::string, std::string>& a, const std::pair<std::string, std::string>& b) {
+                  return a.second < b.second;
+              }
+    );
+    routesModel.setStringList(getStringListForDisplayNames(routes));
+    
+    // Setup available stops for route calculation
     populateStopComboBoxes();
-    updateButtonState();
+    
+    // Initialize UI states
+    updateUIStates();
+    
+    // Set initial time to current time
+    ui->departureTimeEdit->setTime(QTime::currentTime());
 }
 
 MainWindow::~MainWindow()
 {
-    delete network;
+    delete ui;
 }
 
-void MainWindow::setupUI()
+void MainWindow::on_searchTextEdit_textChanged()
 {
-    centralWidget = new QWidget(this);
-    setCentralWidget(centralWidget);
-    
-    mainLayout = new QVBoxLayout(centralWidget);
-    mainLayout->setSpacing(10);
-    mainLayout->setContentsMargins(20, 20, 20, 20);
-    
-    // Title
-    QLabel *titleLabel = new QLabel("Anwendung   Geben Sie Text ein", this);
-    titleLabel->setAlignment(Qt::AlignLeft);
-    titleLabel->setStyleSheet("font-size: 14px; font-weight: bold; margin-bottom: 10px;");
-    mainLayout->addWidget(titleLabel);
-    
-    // Input section in a frame
-    QFrame *inputFrame = new QFrame(this);
-    inputFrame->setFrameStyle(QFrame::Box);
-    inputFrame->setStyleSheet("QFrame { border: 1px solid #ccc; background-color: #f9f9f9; }");
-    QVBoxLayout *frameLayout = new QVBoxLayout(inputFrame);
-    frameLayout->setSpacing(15);
-    frameLayout->setContentsMargins(15, 15, 15, 15);
-    
-    // Start stop selection
-    startLabel = new QLabel("Station für die Abfahrt auswählen:", this);
-    startStopCombo = new QComboBox(this);
-    startStopCombo->setEnabled(false);
-    startStopCombo->setMinimumHeight(25);
-    frameLayout->addWidget(startLabel);
-    frameLayout->addWidget(startStopCombo);
-    
-    // Destination stop selection
-    destLabel = new QLabel("Ziel auswählen:", this);
-    destStopCombo = new QComboBox(this);
-    destStopCombo->setEnabled(false);
-    destStopCombo->setMinimumHeight(25);
-    frameLayout->addWidget(destLabel);
-    frameLayout->addWidget(destStopCombo);
-    
-    // Departure time
-    timeLabel = new QLabel("Gewünschte Abfahrtszeit:", this);
-    departureTimeEdit = new QTimeEdit(this);
-    departureTimeEdit->setTime(QTime(0, 0, 0));
-    departureTimeEdit->setDisplayFormat("hh:mm");
-    departureTimeEdit->setEnabled(false);
-    departureTimeEdit->setMinimumHeight(25);
-    frameLayout->addWidget(timeLabel);
-    frameLayout->addWidget(departureTimeEdit);
-    
-    // Calculate button
-    calculateButton = new QPushButton("Route berechnen", this);
-    calculateButton->setEnabled(false);
-    calculateButton->setMinimumHeight(35);
-    calculateButton->setStyleSheet("QPushButton { background-color: #e0e0e0; border: 1px solid #999; } QPushButton:enabled { background-color: #ffffff; } QPushButton:disabled { background-color: #f0f0f0; color: #999; }");
-    frameLayout->addWidget(calculateButton);
-    
-    mainLayout->addWidget(inputFrame);
-    
-    // Route section
-    QLabel *routeLabel = new QLabel("Ihre Route:", this);
-    routeLabel->setStyleSheet("font-weight: bold; margin-top: 10px;");
-    mainLayout->addWidget(routeLabel);
-    
-    // Route table
-    routeTable = new QTableWidget(this);
-    routeTable->setColumnCount(4);
-    QStringList headers;
-    headers << "Station" << "Ankunftszeit" << "Abfahrtszeit" << "Fahrt ID";
-    routeTable->setHorizontalHeaderLabels(headers);
-    routeTable->horizontalHeader()->setStretchLastSection(true);
-    routeTable->setAlternatingRowColors(true);
-    routeTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    routeTable->setFrameStyle(QFrame::Box);
-    routeTable->setStyleSheet("QTableWidget { border: 1px solid #ccc; }");
-    mainLayout->addWidget(routeTable);
-    
-    // Connect signals
-    connect(startStopCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::onStartStopChanged);
-    connect(destStopCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::onDestinationStopChanged);
-    connect(departureTimeEdit, &QTimeEdit::timeChanged, this, &MainWindow::onTimeChanged);
-    connect(calculateButton, &QPushButton::clicked, this, &MainWindow::onCalculateRoute);
-    
-    // Set window properties
-    setWindowTitle("GTFS Route Planner - Übungsblatt 5");
-    setMinimumSize(800, 600);
-}
-
-void MainWindow::populateStopComboBoxes()
-{
-    if (!network) return;
-    
-    // Get all stops and sort them by name
-    for (const auto& stopPair : network->stops) {
-        if (stopPair.second.locationType == bht::LocationType_Stop) {
-            allStops.push_back(stopPair.second);
-        }
+    // Skip on inactive UI
+    if (!ui->searchTextEdit->isEnabled()) {
+        return;
     }
-    
-    std::sort(allStops.begin(), allStops.end(), [](const bht::Stop& a, const bht::Stop& b) {
-        return a.name < b.name;
-    });
-    
-    // Populate combo boxes
-    startStopCombo->clear();
-    destStopCombo->clear();
-    
-    startStopCombo->addItem("", "");
-    destStopCombo->addItem("", "");
-    
-    for (const auto& stop : allStops) {
-        QString displayName = QString::fromStdString(stop.name);
-        QString stopId = QString::fromStdString(stop.id);
-        
-        startStopCombo->addItem(displayName, stopId);
-        destStopCombo->addItem(displayName, stopId);
+
+    // Update table - UTILISE LE MODÈLE FAHRPLAN
+    int index = ui->tripComboBox->currentIndex();
+    if (index >= 0 && index < static_cast<int>(trips.size())) {
+        std::string tripId = trips[index].first;
+        updateStopTimesTable(ui->searchTextEdit->text().toStdString(), tripId);
     }
+}
+
+void MainWindow::on_routeComboBox_currentIndexChanged(int index) {
+    std::cout << "DEBUG: Route selection changed, index=" << index << std::endl;
     
-    startStopCombo->setEnabled(true);
-}
-
-void MainWindow::updateButtonState()
-{
-    bool startSelected = startStopCombo->currentIndex() > 0;
-    bool destSelected = destStopCombo->currentIndex() > 0;
-    bool timeValid = departureTimeEdit->time().isValid();
-    
-    destStopCombo->setEnabled(startSelected);
-    departureTimeEdit->setEnabled(startSelected && destSelected);
-    calculateButton->setEnabled(startSelected && destSelected && timeValid);
-}
-
-void MainWindow::onStartStopChanged()
-{
-    updateButtonState();
-}
-
-void MainWindow::onDestinationStopChanged()
-{
-    updateButtonState();
-}
-
-void MainWindow::onTimeChanged()
-{
-    updateButtonState();
-}
-
-void MainWindow::onCalculateRoute()
-{
-    if (!network) return;
-    
-    QString startStopId = startStopCombo->currentData().toString();
-    QString destStopId = destStopCombo->currentData().toString();
-    QTime departureTime = departureTimeEdit->time();
-    
-    if (startStopId.isEmpty() || destStopId.isEmpty()) {
-        displayError("Bitte wählen Sie sowohl Start- als auch Zielstation aus.");
+    if (index < 0 || index >= static_cast<int>(routes.size())) {
+        std::cout << "DEBUG: Invalid route index" << std::endl;
         return;
     }
     
-    if (startStopId == destStopId) {
-        displayError("Start- und Zielstation können nicht identisch sein.");
+    std::string routeId = routes[index].first;
+    std::cout << "DEBUG: Selected route ID: " << routeId << std::endl;
+
+    // Find trips for the selected route
+    auto tripsForRoute = myNetwork.getTripsForRoute(routeId);
+    std::cout << "DEBUG: Found " << tripsForRoute.size() << " trips for route" << std::endl;
+    
+    trips.clear();
+    for (auto &item : tripsForRoute) {
+        std::string displayName = myNetwork.getTripDisplayName(item);
+        trips.push_back(std::make_pair(item.id, displayName));
+        std::cout << "DEBUG: Trip: " << item.id << " - " << displayName << std::endl;
+    }
+
+    // Clear and reset UI - UTILISE LE MODÈLE FAHRPLAN
+    ui->searchTextEdit->setEnabled(false);
+    ui->searchTextEdit->clear();
+    ui->scheduleTableView->setEnabled(false);
+    scheduleModel.clear();  // Clear le modèle Fahrplan
+
+    // Enable trip selection
+    ui->tripComboBox->clear();
+    ui->tripComboBox->setEnabled(true);
+    tripsModel.setStringList(getStringListForDisplayNames(trips));
+}
+
+void MainWindow::on_tripComboBox_currentIndexChanged(int index) {
+    std::cout << "DEBUG: Trip selection changed, index=" << index << std::endl;
+    
+    // Skip on inactive UI
+    if (!ui->tripComboBox->isEnabled() || index < 0 || index >= static_cast<int>(trips.size())) {
+        std::cout << "DEBUG: Trip selection invalid, enabled=" << ui->tripComboBox->isEnabled() 
+                  << " index=" << index << " trips.size()=" << trips.size() << std::endl;
         return;
     }
+
+    // Clear search field
+    ui->searchTextEdit->clear();
+
+    // Update table
+    std::string tripId = trips[index].first;
+    std::cout << "DEBUG: Selected trip ID: " << tripId << std::endl;
+    updateStopTimesTable("", tripId);
+}
+
+// New methods for Aufgabe 5
+
+void MainWindow::on_fromStopComboBox_currentIndexChanged(int index) {
+    Q_UNUSED(index)
+    updateUIStates();
+}
+
+void MainWindow::on_toStopComboBox_currentIndexChanged(int index) {
+    Q_UNUSED(index)
+    updateUIStates();
+}
+
+void MainWindow::on_departureTimeEdit_timeChanged(const QTime &time) {
+    Q_UNUSED(time)
+    updateUIStates();
+}
+
+void MainWindow::on_calculateRouteButton_clicked() {
+    int fromIndex = ui->fromStopComboBox->currentIndex();
+    int toIndex = ui->toStopComboBox->currentIndex();
+    
+    if (fromIndex < 0 || fromIndex >= static_cast<int>(availableStops.size()) || 
+        toIndex < 0 || toIndex >= static_cast<int>(availableStops.size())) {
+        QMessageBox::warning(this, "Fehler", "Bitte wählen Sie Start- und Zielhaltestelle aus.");
+        return;
+    }
+    
+    if (fromIndex == toIndex) {
+        QMessageBox::information(this, "Information", "Start- und Zielhaltestelle sind identisch.");
+        return;
+    }
+    
+    std::string fromStopId = availableStops[fromIndex].first;
+    std::string toStopId = availableStops[toIndex].first;
     
     // Convert QTime to GTFSTime
-    bht::GTFSTime gtfsTime;
-    gtfsTime.hour = departureTime.hour();
-    gtfsTime.minute = departureTime.minute();
-    gtfsTime.second = departureTime.second();
+    QTime departureTime = ui->departureTimeEdit->time();
+    bht::GTFSTime gtfsDepartureTime = {
+        static_cast<unsigned char>(departureTime.hour()),
+        static_cast<unsigned char>(departureTime.minute()),
+        0
+    };
     
-    try {
-        std::vector<bht::StopTime> route = network->getTravelPlanDepartingAt(
-            startStopId.toStdString(), 
-            destStopId.toStdString(), 
-            gtfsTime
-        );
-        
-        if (route.empty()) {
-            displayError("Keine Route zwischen den gewählten Stationen zur angegebenen Zeit gefunden.");
-            routeTable->setRowCount(0);
-        } else {
-            displayRoute(route);
-        }
-    } catch (const std::exception& e) {
-        displayError(QString("Fehler bei der Routenberechnung: %1").arg(e.what()));
+    // Calculate route
+    auto travelPlan = myNetwork.getTravelPlanDepartingAt(fromStopId, toStopId, gtfsDepartureTime);
+    
+    if (travelPlan.empty()) {
+        QMessageBox::information(this, "Keine Route gefunden", 
+                                 "Es konnte keine Route zur angegebenen Zeit gefunden werden.");
+    } else {
+        displayTravelPlan(travelPlan);
     }
 }
 
-void MainWindow::displayRoute(const std::vector<bht::StopTime>& route)
-{
-    routeTable->setRowCount(route.size());
+void MainWindow::updateStopTimesTable(std::string needle, std::string tripId) {
+    std::cout << "DEBUG: updateStopTimesTable called with tripId: " << tripId 
+              << " needle: '" << needle << "'" << std::endl;
     
-    for (size_t i = 0; i < route.size(); ++i) {
-        const bht::StopTime& stopTime = route[i];
-        
-        // Stop name
-        QString stopName;
-        try {
-            bht::Stop stop = network->getStopById(stopTime.stopId);
-            stopName = QString::fromStdString(stop.name);
-        } catch (...) {
-            stopName = QString::fromStdString(stopTime.stopId);
-        }
-        
-        // Arrival time
-        QString arrivalTime = formatTime(stopTime.arrivalTime);
-        
-        // Departure time
-        QString departureTime = formatTime(stopTime.departureTime);
-        
-        // Trip ID
-        QString tripId = QString::fromStdString(stopTime.tripId);
-        
-        routeTable->setItem(i, 0, new QTableWidgetItem(stopName));
-        routeTable->setItem(i, 1, new QTableWidgetItem(arrivalTime));
-        routeTable->setItem(i, 2, new QTableWidgetItem(departureTime));
-        routeTable->setItem(i, 3, new QTableWidgetItem(tripId));
+    const auto& stopTimes = myNetwork.searchStopTimesForTrip(needle, tripId);
+    
+    std::cout << "DEBUG: Found " << stopTimes.size() << " stop times for Fahrplan" << std::endl;
+    
+    // Debug: afficher quelques arrêts
+    for (size_t i = 0; i < std::min(stopTimes.size(), size_t(5)); ++i) {
+        const auto& stop = stopTimes[i];
+        auto stopInfo = myNetwork.getStopById(stop.stopId);
+        std::cout << "DEBUG: Stop " << i << ": " << stop.stopId 
+                  << " (" << stopInfo.name << ") seq=" << stop.stopSequence 
+                  << " arrival=" << static_cast<int>(stop.arrivalTime.hour) << ":" 
+                  << static_cast<int>(stop.arrivalTime.minute) << std::endl;
     }
     
-    routeTable->resizeColumnsToContents();
+    // UTILISE LE MODÈLE FAHRPLAN
+    scheduleModel.setDisplayedStopTimes(stopTimes);
+    ui->searchTextEdit->setEnabled(true);
+    ui->scheduleTableView->setEnabled(true);
+    ui->scheduleTableView->resizeColumnsToContents();
+    
+    std::cout << "DEBUG: Schedule table (Fahrplan) updated and enabled" << std::endl;
 }
 
-void MainWindow::displayError(const QString& message)
-{
-    QMessageBox::warning(this, "Routenberechnung", message);
+void MainWindow::populateStopComboBoxes() {
+    std::cout << "DEBUG: Populating stop combo boxes" << std::endl;
+    
+    // Get all stops and sort them by name
+    for (const auto& stopPair : myNetwork.stops) {
+        const auto& stop = stopPair.second;
+        // Only include stations and platforms, not sub-elements
+        if (stop.locationType == bht::LocationType_Station || 
+            stop.locationType == bht::LocationType_Stop) {
+            availableStops.push_back(std::make_pair(stop.id, stop.name));
+        }
+    }
+    
+    std::cout << "DEBUG: Found " << availableStops.size() << " available stops" << std::endl;
+    
+    // Sort by name
+    std::sort(availableStops.begin(), availableStops.end(),
+              [](const std::pair<std::string, std::string>& a, 
+                 const std::pair<std::string, std::string>& b) {
+                  return a.second < b.second;
+              });
+    
+    // Set models
+    QStringList stopNames = getStringListForDisplayNames(availableStops);
+    fromStopsModel.setStringList(stopNames);
+    toStopsModel.setStringList(stopNames);
 }
 
-QString MainWindow::formatTime(const bht::GTFSTime& time)
-{
-    return QString("%1:%2:%3")
-        .arg(time.hour, 2, 10, QChar('0'))
-        .arg(time.minute, 2, 10, QChar('0'))
-        .arg(time.second, 2, 10, QChar('0'));
+void MainWindow::updateUIStates() {
+    // Enable calculate button only when all required fields are filled
+    bool canCalculate = (ui->fromStopComboBox->currentIndex() >= 0 &&
+                        ui->toStopComboBox->currentIndex() >= 0 &&
+                        ui->fromStopComboBox->currentIndex() != ui->toStopComboBox->currentIndex());
+    
+    ui->calculateRouteButton->setEnabled(canCalculate);
+}
+
+void MainWindow::displayTravelPlan(const std::vector<bht::StopTime>& travelPlan) {
+    std::cout << "DEBUG: Displaying travel plan with " << travelPlan.size() << " stops" << std::endl;
+    
+    // UTILISE LE MODÈLE ROUTENPLANER
+    routeModel.setDisplayedStopTimes(travelPlan);
+    ui->stopTimeTableView->setEnabled(true);
+    ui->stopTimeTableView->resizeColumnsToContents();
+    
+    std::cout << "DEBUG: Route table (Routenplaner) updated" << std::endl;
+}
+
+QStringList MainWindow::getStringListForDisplayNames(const std::vector<std::pair<std::string, std::string>>& items) {
+    QStringList result;
+    for (auto &item : items) {
+        result << QString(item.second.c_str());
+    }
+    return result;
 }

@@ -2,79 +2,63 @@
 
 namespace bht {
 
-NetworkScheduledTrip::NetworkScheduledTrip(const Trip& trip, const std::vector<StopTime>& stops) : trip(trip), stops(stops) {
-
-}
-
-NetworkScheduledTrip::NetworkScheduledTrip(const NetworkScheduledTrip& other) : trip(other.trip), stops(other.stops) {
-}
-
-NetworkScheduledTrip::NetworkScheduledTrip(NetworkScheduledTrip&& other) : trip(other.trip) {
-  stops = std::move(other.stops);
+// NetworkScheduledTrip implementation
+NetworkScheduledTrip::NetworkScheduledTrip(const std::string& tripId, const std::vector<StopTime>& stopTimes)
+    : tripId(tripId), stopTimes(stopTimes) {
 }
 
 NetworkScheduledTrip::iterator NetworkScheduledTrip::begin() const {
-  return iterator{this, 0};
+    return iterator(this, 0);
 }
 
 NetworkScheduledTrip::iterator NetworkScheduledTrip::end() const {
-  return iterator{this, stops.size()};
+    return iterator(this, stopTimes.size());
 }
 
-NetworkScheduledTrip::iterator NetworkScheduledTrip::at(const std::string& stopId) const {
-  for (size_t index = 0; index < stops.size(); index++) {
-    if (stops[index].stopId == stopId) {
-      return iterator{this, index};
-    }
-  }
-
-  return end();
-}
-
-const Trip& NetworkScheduledTrip::getTrip() const {
-  return trip;
-}
-
-NetworkScheduledTrip::iterator::iterator(const NetworkScheduledTrip* trip, size_t position) : trip(trip), position(position) {
-
+// Iterator implementation
+NetworkScheduledTrip::iterator::iterator(const NetworkScheduledTrip* trip, size_t index)
+    : trip(trip), index(index) {
 }
 
 NetworkScheduledTrip::iterator& NetworkScheduledTrip::iterator::operator++() {
-  position++;
-  return *this;
+    ++index;
+    return *this;
 }
 
 NetworkScheduledTrip::iterator NetworkScheduledTrip::iterator::operator++(int) {
-  iterator tmp{trip, position};
-  ++(*this);
-  return tmp;
+    iterator tmp = *this;
+    ++index;
+    return tmp;
 }
 
 NetworkScheduledTrip::iterator& NetworkScheduledTrip::iterator::operator--() {
-  position--;
-  return *this;
+    --index;
+    return *this;
 }
 
 NetworkScheduledTrip::iterator NetworkScheduledTrip::iterator::operator--(int) {
-  iterator tmp{trip, position};
-  --(*this);
-  return tmp;
+    iterator tmp = *this;
+    --index;
+    return tmp;
 }
 
-NetworkScheduledTrip::iterator::reference NetworkScheduledTrip::iterator::operator*() const {
-  return trip->stops[position];
+const StopTime& NetworkScheduledTrip::iterator::operator*() const {
+    return trip->stopTimes[index];
+}
+
+const StopTime* NetworkScheduledTrip::iterator::operator->() const {
+    return &(trip->stopTimes[index]);
 }
 
 const std::string& NetworkScheduledTrip::iterator::getTripId() const {
-  return trip->stops[0].tripId;
+    return trip->tripId;
 }
 
 unsigned int NetworkScheduledTrip::iterator::getStopSequence() const {
-  return position;
-}
-
-NetworkScheduledTrip::iterator::pointer NetworkScheduledTrip::iterator::operator->() {
-  return &(trip->stops[position]);
+    if (index >= trip->stopTimes.size()) {
+        return static_cast<unsigned int>(-1); // Invalid sequence to indicate end
+    }
+    return trip->stopTimes[index].stopSequence;
 }
 
 bool operator==(const NetworkScheduledTrip::iterator& a, const NetworkScheduledTrip::iterator& b) { 

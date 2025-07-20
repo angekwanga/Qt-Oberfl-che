@@ -17,7 +17,7 @@ CSVReader::CSVReader(std::string path) {
     for (size_t index = 0; index < items.size(); index++) {
       headers[items[index]] = index;
     }
-
+    
     // Fetch the first line of the file
     next();
   }
@@ -60,13 +60,12 @@ std::string CSVReader::getField(std::string name) {
 }
 
 std::string CSVReader::getField(std::string name, std::string defaultValue) {
-  auto it = headers.find(name);
-  if (it != headers.end() && it->second < fields.size() && !fields[it->second].empty()) {
-      return fields[it->second];
+  if (headers.count(name) > 0) {
+    size_t index = headers.at(name);
+    return index >= fields.size() || fields[index].empty() ? defaultValue : fields[index];
   }
-  else {
-    return defaultValue;
-  }
+
+  return defaultValue;
 }
 
 std::vector<std::string> CSVReader::parseLine() {
