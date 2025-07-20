@@ -11,7 +11,7 @@ BEWERTUNG: 99
 - Beschreibung: Das erforderliche Makefile muss vorhanden sein.
 - Status: ausgeführt
 - Erfolgreich: **Ja**
-- Laufzeit: 0:00:00.000016
+- Laufzeit: 0:00:00.000027
 ##### Testschritte
 - Makefile soll vorhanden sein: OK
 
@@ -21,7 +21,7 @@ BEWERTUNG: 99
 - Beschreibung: Eine Projektdatei für das Qt-Projekt zum erstellen mit qmake ist vorhanden.
 - Status: ausgeführt
 - Erfolgreich: **Ja**
-- Laufzeit: 0:00:00.000291
+- Laufzeit: 0:00:00.000591
 - Punkte: **1**
 ##### Testschritte
 - Für ./**/*.pro wurde ./Uebung05.pro gefunden: OK
@@ -32,7 +32,7 @@ BEWERTUNG: 99
 - Beschreibung: Das Makefile besitzt ein Target zum kompilieren der Tests.
 - Status: ausgeführt
 - Erfolgreich: **Ja**
-- Laufzeit: 0:00:00.000079
+- Laufzeit: 0:00:00.000155
 ##### Testschritte
 - Inhalt von Makefile prüfen: OK
 
@@ -42,7 +42,7 @@ BEWERTUNG: 99
 - Beschreibung: Die Datei tester.cpp wurde nicht verändert und ist genau so wie im Original-Repository.
 - Status: ausgeführt
 - Erfolgreich: **Ja**
-- Laufzeit: 0:00:00.000930
+- Laufzeit: 0:00:00.000135
 ##### Testschritte
 - Hash-Test von tester.cpp auf ['bfb51d75114c6432faa78b69c397273aaaff2ee4']: OK
 
@@ -52,7 +52,7 @@ BEWERTUNG: 99
 - Beschreibung: Mit dem Befehl `make autotest` können die Tests kompiliert werden.
 - Status: ausgeführt
 - Erfolgreich: **Ja**
-- Laufzeit: 0:00:28.941310
+- Laufzeit: 0:00:30.266590
 - Punkte: **1**
 - Return-Code / Fehlercode: `0`
 - Kommandozeile: `make autotest`
@@ -71,13 +71,13 @@ Running main() from /usr/src/googletest/googletest/src/gtest_main.cc
 [----------] Global test environment set-up.
 [----------] 2 tests from Network
 [ RUN      ] Network.getStopsForTransfer
-[       OK ] Network.getStopsForTransfer (7941 ms)
+[       OK ] Network.getStopsForTransfer (8076 ms)
 [ RUN      ] Network.getTravelPlanDepartingAt
-[       OK ] Network.getTravelPlanDepartingAt (13957 ms)
-[----------] 2 tests from Network (21898 ms total)
+[       OK ] Network.getTravelPlanDepartingAt (14102 ms)
+[----------] 2 tests from Network (22179 ms total)
 
 [----------] Global test environment tear-down
-[==========] 2 tests from 1 test suite ran. (21898 ms total)
+[==========] 2 tests from 1 test suite ran. (22179 ms total)
 [  PASSED  ] 2 tests.
 ```
 
@@ -95,7 +95,7 @@ tester.cpp:91:29: warning: comparison of integer expressions of different signed
 - Beschreibung: Die Anwendung wird mit Unit-Tests kompiliert und erzeugt die geforderte Datei `/repo/test_runner`.
 - Status: ausgeführt
 - Erfolgreich: **Ja**
-- Laufzeit: 0:00:00.000043
+- Laufzeit: 0:00:00.000027
 ##### Testschritte
 - test_runner soll vorhanden sein: OK
 
@@ -105,7 +105,7 @@ tester.cpp:91:29: warning: comparison of integer expressions of different signed
 - Beschreibung: Die geforderte Datei `/repo/test_runner` enthält die `tester.cpp`-Datei.
 - Status: ausgeführt
 - Erfolgreich: **Ja**
-- Laufzeit: 0:00:00.334010
+- Laufzeit: 0:00:00.312371
 - Return-Code / Fehlercode: `0`
 - Kommandozeile: `readelf -s --wide /repo/test_runner`
 ##### Testschritte
@@ -123,7 +123,7 @@ tester.cpp:91:29: warning: comparison of integer expressions of different signed
 - Beschreibung: Die Unit-Tests der Anwendung werden korrekt ausgeführt (max. Laufzeit 60 Sekunden).
 - Status: ausgeführt
 - Erfolgreich: **Ja**
-- Laufzeit: 0:00:21.989088
+- Laufzeit: 0:00:22.255635
 - Punkte: **96**
 - Return-Code / Fehlercode: `0`
 - Kommandozeile: `/repo/test_runner`
@@ -137,13 +137,13 @@ tester.cpp:91:29: warning: comparison of integer expressions of different signed
 [----------] Global test environment set-up.
 [----------] 2 tests from Network
 [ RUN      ] Network.getStopsForTransfer
-[       OK ] Network.getStopsForTransfer (7895 ms)
+[       OK ] Network.getStopsForTransfer (7959 ms)
 [ RUN      ] Network.getTravelPlanDepartingAt
-[       OK ] Network.getTravelPlanDepartingAt (13820 ms)
-[----------] 2 tests from Network (21715 ms total)
+[       OK ] Network.getTravelPlanDepartingAt (14016 ms)
+[----------] 2 tests from Network (21975 ms total)
 
 [----------] Global test environment tear-down
-[==========] 2 tests from 1 test suite ran. (21715 ms total)
+[==========] 2 tests from 1 test suite ran. (21975 ms total)
 [  PASSED  ] 2 tests.
 ```
 
@@ -153,7 +153,7 @@ tester.cpp:91:29: warning: comparison of integer expressions of different signed
 - Beschreibung: qmake erzeugt ein Makefile für die Anwendung
 - Status: ausgeführt
 - Erfolgreich: **Ja**
-- Laufzeit: 0:00:00.327135
+- Laufzeit: 0:00:00.355036
 - Punkte: **1**
 - Return-Code / Fehlercode: `0`
 - Kommandozeile: `/usr/bin/qmake6 /repo/./Uebung05.pro`
@@ -168,7 +168,6 @@ tester.cpp:91:29: warning: comparison of integer expressions of different signed
 ##### Fehlerausgabe
 
 ```WARNING: Failure to find: config.h
-WARNING: Failure to find: mainwindow.ui
 ```
 
 ## Test 10
@@ -177,15 +176,27 @@ WARNING: Failure to find: mainwindow.ui
 - Beschreibung: Das erzeugte Makefile für die Anwendung kann kompiliert werden.
 - Status: ausgeführt
 - Erfolgreich: **Nein**
-- Laufzeit: 0:00:00.286385
+- Laufzeit: 0:00:02.677153
 - Punkte: **0**
 - Return-Code / Fehlercode: `2`
 - Kommandozeile: `make`
 ##### Testschritte
 - Rückgabe-Code ist `0`: fehlgeschlagen
 
+##### Ausgabe
+
+```/usr/lib/qt6/libexec/uic ../mainwindow.ui -o ui_mainwindow.h
+g++ -c -pipe -O2 -std=gnu++1z -Wall -Wextra -fPIC -D_REENTRANT -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -I/repo -I. -I/usr/include/x86_64-linux-gnu/qt6 -I/usr/include/x86_64-linux-gnu/qt6/QtWidgets -I/usr/include/x86_64-linux-gnu/qt6/QtGui -I/usr/include/x86_64-linux-gnu/qt6/QtCore -I. -I. -I/usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++ -o csv.o ../csv.cpp
+g++ -c -pipe -O2 -std=gnu++1z -Wall -Wextra -fPIC -D_REENTRANT -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -I/repo -I. -I/usr/include/x86_64-linux-gnu/qt6 -I/usr/include/x86_64-linux-gnu/qt6/QtWidgets -I/usr/include/x86_64-linux-gnu/qt6/QtGui -I/usr/include/x86_64-linux-gnu/qt6/QtCore -I. -I. -I/usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++ -o main_qt.o ../main_qt.cpp
+g++ -c -pipe -O2 -std=gnu++1z -Wall -Wextra -fPIC -D_REENTRANT -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -I/repo -I. -I/usr/include/x86_64-linux-gnu/qt6 -I/usr/include/x86_64-linux-gnu/qt6/QtWidgets -I/usr/include/x86_64-linux-gnu/qt6/QtGui -I/usr/include/x86_64-linux-gnu/qt6/QtCore -I. -I. -I/usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++ -o mainwindow.o ../mainwindow.cpp
+```
+
 ##### Fehlerausgabe
 
-```make: *** No rule to make target 'mainwindow.ui', needed by 'ui_mainwindow.h'.  Stop.
+```../mainwindow.cpp:4:10: fatal error: config.h: No such file or directory
+    4 | #include "config.h"
+      |          ^~~~~~~~~~
+compilation terminated.
+make: *** [Makefile:415: mainwindow.o] Error 1
 ```
 
