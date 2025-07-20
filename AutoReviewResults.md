@@ -1,9 +1,9 @@
-BEWERTUNG: 99
+BEWERTUNG: 100
 
 # Auswertung der Abgabe
 
 - Status: Abgabe wurde bewertet
-- Punkte: **99** von **100**
+- Punkte: **100** von **100**
 
 ## Test 1
 
@@ -11,7 +11,7 @@ BEWERTUNG: 99
 - Beschreibung: Das erforderliche Makefile muss vorhanden sein.
 - Status: ausgeführt
 - Erfolgreich: **Ja**
-- Laufzeit: 0:00:00.000027
+- Laufzeit: 0:00:00.000045
 ##### Testschritte
 - Makefile soll vorhanden sein: OK
 
@@ -21,7 +21,7 @@ BEWERTUNG: 99
 - Beschreibung: Eine Projektdatei für das Qt-Projekt zum erstellen mit qmake ist vorhanden.
 - Status: ausgeführt
 - Erfolgreich: **Ja**
-- Laufzeit: 0:00:00.000591
+- Laufzeit: 0:00:00.000869
 - Punkte: **1**
 ##### Testschritte
 - Für ./**/*.pro wurde ./Uebung05.pro gefunden: OK
@@ -32,7 +32,7 @@ BEWERTUNG: 99
 - Beschreibung: Das Makefile besitzt ein Target zum kompilieren der Tests.
 - Status: ausgeführt
 - Erfolgreich: **Ja**
-- Laufzeit: 0:00:00.000155
+- Laufzeit: 0:00:00.000217
 ##### Testschritte
 - Inhalt von Makefile prüfen: OK
 
@@ -42,7 +42,7 @@ BEWERTUNG: 99
 - Beschreibung: Die Datei tester.cpp wurde nicht verändert und ist genau so wie im Original-Repository.
 - Status: ausgeführt
 - Erfolgreich: **Ja**
-- Laufzeit: 0:00:00.000135
+- Laufzeit: 0:00:00.000143
 ##### Testschritte
 - Hash-Test von tester.cpp auf ['bfb51d75114c6432faa78b69c397273aaaff2ee4']: OK
 
@@ -52,7 +52,7 @@ BEWERTUNG: 99
 - Beschreibung: Mit dem Befehl `make autotest` können die Tests kompiliert werden.
 - Status: ausgeführt
 - Erfolgreich: **Ja**
-- Laufzeit: 0:00:30.266590
+- Laufzeit: 0:00:28.994557
 - Punkte: **1**
 - Return-Code / Fehlercode: `0`
 - Kommandozeile: `make autotest`
@@ -71,13 +71,13 @@ Running main() from /usr/src/googletest/googletest/src/gtest_main.cc
 [----------] Global test environment set-up.
 [----------] 2 tests from Network
 [ RUN      ] Network.getStopsForTransfer
-[       OK ] Network.getStopsForTransfer (8076 ms)
+[       OK ] Network.getStopsForTransfer (7922 ms)
 [ RUN      ] Network.getTravelPlanDepartingAt
-[       OK ] Network.getTravelPlanDepartingAt (14102 ms)
-[----------] 2 tests from Network (22179 ms total)
+[       OK ] Network.getTravelPlanDepartingAt (13923 ms)
+[----------] 2 tests from Network (21846 ms total)
 
 [----------] Global test environment tear-down
-[==========] 2 tests from 1 test suite ran. (22179 ms total)
+[==========] 2 tests from 1 test suite ran. (21846 ms total)
 [  PASSED  ] 2 tests.
 ```
 
@@ -95,7 +95,7 @@ tester.cpp:91:29: warning: comparison of integer expressions of different signed
 - Beschreibung: Die Anwendung wird mit Unit-Tests kompiliert und erzeugt die geforderte Datei `/repo/test_runner`.
 - Status: ausgeführt
 - Erfolgreich: **Ja**
-- Laufzeit: 0:00:00.000027
+- Laufzeit: 0:00:00.000042
 ##### Testschritte
 - test_runner soll vorhanden sein: OK
 
@@ -105,7 +105,7 @@ tester.cpp:91:29: warning: comparison of integer expressions of different signed
 - Beschreibung: Die geforderte Datei `/repo/test_runner` enthält die `tester.cpp`-Datei.
 - Status: ausgeführt
 - Erfolgreich: **Ja**
-- Laufzeit: 0:00:00.312371
+- Laufzeit: 0:00:00.279290
 - Return-Code / Fehlercode: `0`
 - Kommandozeile: `readelf -s --wide /repo/test_runner`
 ##### Testschritte
@@ -123,7 +123,7 @@ tester.cpp:91:29: warning: comparison of integer expressions of different signed
 - Beschreibung: Die Unit-Tests der Anwendung werden korrekt ausgeführt (max. Laufzeit 60 Sekunden).
 - Status: ausgeführt
 - Erfolgreich: **Ja**
-- Laufzeit: 0:00:22.255635
+- Laufzeit: 0:00:22.101867
 - Punkte: **96**
 - Return-Code / Fehlercode: `0`
 - Kommandozeile: `/repo/test_runner`
@@ -137,13 +137,13 @@ tester.cpp:91:29: warning: comparison of integer expressions of different signed
 [----------] Global test environment set-up.
 [----------] 2 tests from Network
 [ RUN      ] Network.getStopsForTransfer
-[       OK ] Network.getStopsForTransfer (7959 ms)
+[       OK ] Network.getStopsForTransfer (7930 ms)
 [ RUN      ] Network.getTravelPlanDepartingAt
-[       OK ] Network.getTravelPlanDepartingAt (14016 ms)
-[----------] 2 tests from Network (21975 ms total)
+[       OK ] Network.getTravelPlanDepartingAt (13890 ms)
+[----------] 2 tests from Network (21821 ms total)
 
 [----------] Global test environment tear-down
-[==========] 2 tests from 1 test suite ran. (21975 ms total)
+[==========] 2 tests from 1 test suite ran. (21821 ms total)
 [  PASSED  ] 2 tests.
 ```
 
@@ -153,7 +153,7 @@ tester.cpp:91:29: warning: comparison of integer expressions of different signed
 - Beschreibung: qmake erzeugt ein Makefile für die Anwendung
 - Status: ausgeführt
 - Erfolgreich: **Ja**
-- Laufzeit: 0:00:00.355036
+- Laufzeit: 0:00:00.357402
 - Punkte: **1**
 - Return-Code / Fehlercode: `0`
 - Kommandozeile: `/usr/bin/qmake6 /repo/./Uebung05.pro`
@@ -165,23 +165,18 @@ tester.cpp:91:29: warning: comparison of integer expressions of different signed
 ```Info: creating stash file /repo/build/.qmake.stash
 ```
 
-##### Fehlerausgabe
-
-```WARNING: Failure to find: config.h
-```
-
 ## Test 10
 
 - Test: *Erzeugtes Makefile kann die Anwendung erstellen*
 - Beschreibung: Das erzeugte Makefile für die Anwendung kann kompiliert werden.
 - Status: ausgeführt
-- Erfolgreich: **Nein**
-- Laufzeit: 0:00:02.677153
-- Punkte: **0**
-- Return-Code / Fehlercode: `2`
+- Erfolgreich: **Ja**
+- Laufzeit: 0:00:14.415759
+- Punkte: **1**
+- Return-Code / Fehlercode: `0`
 - Kommandozeile: `make`
 ##### Testschritte
-- Rückgabe-Code ist `0`: fehlgeschlagen
+- Rückgabe-Code ist `0`: OK
 
 ##### Ausgabe
 
@@ -189,14 +184,14 @@ tester.cpp:91:29: warning: comparison of integer expressions of different signed
 g++ -c -pipe -O2 -std=gnu++1z -Wall -Wextra -fPIC -D_REENTRANT -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -I/repo -I. -I/usr/include/x86_64-linux-gnu/qt6 -I/usr/include/x86_64-linux-gnu/qt6/QtWidgets -I/usr/include/x86_64-linux-gnu/qt6/QtGui -I/usr/include/x86_64-linux-gnu/qt6/QtCore -I. -I. -I/usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++ -o csv.o ../csv.cpp
 g++ -c -pipe -O2 -std=gnu++1z -Wall -Wextra -fPIC -D_REENTRANT -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -I/repo -I. -I/usr/include/x86_64-linux-gnu/qt6 -I/usr/include/x86_64-linux-gnu/qt6/QtWidgets -I/usr/include/x86_64-linux-gnu/qt6/QtGui -I/usr/include/x86_64-linux-gnu/qt6/QtCore -I. -I. -I/usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++ -o main_qt.o ../main_qt.cpp
 g++ -c -pipe -O2 -std=gnu++1z -Wall -Wextra -fPIC -D_REENTRANT -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -I/repo -I. -I/usr/include/x86_64-linux-gnu/qt6 -I/usr/include/x86_64-linux-gnu/qt6/QtWidgets -I/usr/include/x86_64-linux-gnu/qt6/QtGui -I/usr/include/x86_64-linux-gnu/qt6/QtCore -I. -I. -I/usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++ -o mainwindow.o ../mainwindow.cpp
-```
-
-##### Fehlerausgabe
-
-```../mainwindow.cpp:4:10: fatal error: config.h: No such file or directory
-    4 | #include "config.h"
-      |          ^~~~~~~~~~
-compilation terminated.
-make: *** [Makefile:415: mainwindow.o] Error 1
+g++ -c -pipe -O2 -std=gnu++1z -Wall -Wextra -fPIC -D_REENTRANT -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -I/repo -I. -I/usr/include/x86_64-linux-gnu/qt6 -I/usr/include/x86_64-linux-gnu/qt6/QtWidgets -I/usr/include/x86_64-linux-gnu/qt6/QtGui -I/usr/include/x86_64-linux-gnu/qt6/QtCore -I. -I. -I/usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++ -o network.o ../network.cpp
+g++ -c -pipe -O2 -std=gnu++1z -Wall -Wextra -fPIC -D_REENTRANT -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -I/repo -I. -I/usr/include/x86_64-linux-gnu/qt6 -I/usr/include/x86_64-linux-gnu/qt6/QtWidgets -I/usr/include/x86_64-linux-gnu/qt6/QtGui -I/usr/include/x86_64-linux-gnu/qt6/QtCore -I. -I. -I/usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++ -o scheduled_trip.o ../scheduled_trip.cpp
+g++ -c -pipe -O2 -std=gnu++1z -Wall -Wextra -fPIC -D_REENTRANT -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -I/repo -I. -I/usr/include/x86_64-linux-gnu/qt6 -I/usr/include/x86_64-linux-gnu/qt6/QtWidgets -I/usr/include/x86_64-linux-gnu/qt6/QtGui -I/usr/include/x86_64-linux-gnu/qt6/QtCore -I. -I. -I/usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++ -o stoptimestablemodel.o ../stoptimestablemodel.cpp
+g++ -pipe -O2 -std=gnu++1z -Wall -Wextra -fPIC -dM -E -o moc_predefs.h /usr/lib/x86_64-linux-gnu/qt6/mkspecs/features/data/dummy.cpp
+/usr/lib/qt6/libexec/moc -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB --include /repo/build/moc_predefs.h -I/usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++ -I/repo -I/usr/include/x86_64-linux-gnu/qt6 -I/usr/include/x86_64-linux-gnu/qt6/QtWidgets -I/usr/include/x86_64-linux-gnu/qt6/QtGui -I/usr/include/x86_64-linux-gnu/qt6/QtCore -I. -I/usr/local/include/c++/15.1.0 -I/usr/local/include/c++/15.1.0/x86_64-linux-gnu -I/usr/local/include/c++/15.1.0/backward -I/usr/local/lib/gcc/x86_64-linux-gnu/15.1.0/include -I/usr/local/include -I/usr/local/lib/gcc/x86_64-linux-gnu/15.1.0/include-fixed -I/usr/include/x86_64-linux-gnu -I/usr/include ../mainwindow.h -o moc_mainwindow.cpp
+g++ -c -pipe -O2 -std=gnu++1z -Wall -Wextra -fPIC -D_REENTRANT -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -I/repo -I. -I/usr/include/x86_64-linux-gnu/qt6 -I/usr/include/x86_64-linux-gnu/qt6/QtWidgets -I/usr/include/x86_64-linux-gnu/qt6/QtGui -I/usr/include/x86_64-linux-gnu/qt6/QtCore -I. -I. -I/usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++ -o moc_mainwindow.o moc_mainwindow.cpp
+/usr/lib/qt6/libexec/moc -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB --include /repo/build/moc_predefs.h -I/usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++ -I/repo -I/usr/include/x86_64-linux-gnu/qt6 -I/usr/include/x86_64-linux-gnu/qt6/QtWidgets -I/usr/include/x86_64-linux-gnu/qt6/QtGui -I/usr/include/x86_64-linux-gnu/qt6/QtCore -I. -I/usr/local/include/c++/15.1.0 -I/usr/local/include/c++/15.1.0/x86_64-linux-gnu -I/usr/local/include/c++/15.1.0/backward -I/usr/local/lib/gcc/x86_64-linux-gnu/15.1.0/include -I/usr/local/include -I/usr/local/lib/gcc/x86_64-linux-gnu/15.1.0/include-fixed -I/usr/include/x86_64-linux-gnu -I/usr/include ../stoptimestablemodel.h -o moc_stoptimestablemodel.cpp
+g++ -c -pipe -O2 -std=gnu++1z -Wall -Wextra -fPIC -D_REENTRANT -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -I/repo -I. -I/usr/include/x86_64-linux-gnu/qt6 -I/usr/include/x86_64-linux-gnu/qt6/QtWidgets -I/usr/include/x86_64-linux-gnu/qt6/QtGui -I/usr/include/x86_64-linux-gnu/qt6/QtCore -I. -I. -I/usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++ -o moc_stoptimestablemodel.o moc_stoptimestablemodel.cpp
+g++ -Wl,-O1 -Wl,-rpath-link,/usr/lib/x86_64-linux-gnu -o Uebung05  csv.o main_qt.o mainwindow.o network.o scheduled_trip.o stoptimestablemodel.o moc_mainwindow.o moc_stoptimestablemodel.o   /usr/lib/x86_64-linux-gnu/libQt6Widgets.so /usr/lib/x86_64-linux-gnu/libQt6Gui.so /usr/lib/x86_64-linux-gnu/libGLX.so /usr/lib/x86_64-linux-gnu/libOpenGL.so /usr/lib/x86_64-linux-gnu/libQt6Core.so -lpthread -lGLX -lOpenGL
 ```
 
