@@ -1,0 +1,589 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1200</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>GUI-Routenplaner</string>
+  </property>
+  <property name="styleSheet">
+   <string>QMainWindow {
+    background-color: #f5f5f5;
+}
+
+QTabWidget::pane {
+    border: 1px solid #c0c0c0;
+    background-color: white;
+    border-radius: 8px;
+}
+
+QTabBar::tab {
+    background-color: #e0e0e0;
+    border: 1px solid #c0c0c0;
+    border-bottom: none;
+    padding: 8px 16px;
+    margin-right: 2px;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+QTabBar::tab:selected {
+    background-color: white;
+    border-bottom: 1px solid white;
+}
+
+QGroupBox {
+    font-weight: bold;
+    border: 2px solid #d0d0d0;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    background-color: white;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 8px 0 8px;
+    background-color: white;
+}
+
+QLabel {
+    font-size: 12px;
+    color: #333;
+    font-weight: normal;
+}
+
+QComboBox {
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+    padding: 6px;
+    background-color: white;
+    min-height: 20px;
+}
+
+QComboBox:focus {
+    border: 2px solid #0078d4;
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 25px;
+    border-left-width: 1px;
+    border-left-color: #d0d0d0;
+    border-left-style: solid;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+    background-color: #f0f0f0;
+}
+
+QComboBox::down-arrow {
+    image: none;
+    border: 4px solid transparent;
+    border-top: 8px solid #000000;
+    width: 0;
+    height: 0;
+    margin: 0 auto;
+}
+
+QComboBox::down-arrow:hover {
+    border-top: 8px solid #0078d4;
+}
+
+QTimeEdit::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 25px;
+    border-left-width: 1px;
+    border-left-color: #d0d0d0;
+    border-left-style: solid;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+    background-color: #f0f0f0;
+}
+
+QTimeEdit::down-arrow {
+    image: none;
+    border: 4px solid transparent;
+    border-top: 8px solid #000000;
+    width: 0;
+    height: 0;
+    margin: 0 auto;
+}
+
+QTimeEdit::up-arrow {
+    image: none;
+    border: 4px solid transparent;
+    border-bottom: 8px solid #000000;
+    width: 0;
+    height: 0;
+    margin: 0 auto;
+}
+
+QTimeEdit::down-arrow:hover {
+    border-top: 8px solid #0078d4;
+}
+
+QTimeEdit::up-arrow:hover {
+    border-bottom: 8px solid #0078d4;
+}
+
+QPushButton {
+    background-color: #0078d4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 20px;
+    font-weight: bold;
+    min-height: 20px;
+}
+
+QPushButton:hover {
+    background-color: #106ebe;
+}
+
+QPushButton:pressed {
+    background-color: #005a9e;
+}
+
+QPushButton:disabled {
+    background-color: #cccccc;
+    color: #666666;
+}
+
+QTableView {
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+    background-color: white;
+    gridline-color: #e0e0e0;
+    selection-background-color: #0078d4;
+}
+
+QHeaderView::section {
+    background-color: #f0f0f0;
+    border: 1px solid #d0d0d0;
+    padding: 8px;
+    font-weight: bold;
+}
+
+QLineEdit {
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+    padding: 6px;
+    background-color: white;
+}
+
+QLineEdit:focus {
+    border: 2px solid #0078d4;
+}</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout_main">
+    <property name="spacing">
+     <number>10</number>
+    </property>
+    <property name="leftMargin">
+     <number>20</number>
+    </property>
+    <property name="topMargin">
+     <number>20</number>
+    </property>
+    <property name="rightMargin">
+     <number>20</number>
+    </property>
+    <property name="bottomMargin">
+     <number>20</number>
+    </property>
+    <item>
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="QWidget" name="routePlannerTab">
+       <attribute name="title">
+        <string>Routenplaner</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_routePlanner">
+        <property name="spacing">
+         <number>20</number>
+        </property>
+        <property name="leftMargin">
+         <number>30</number>
+        </property>
+        <property name="topMargin">
+         <number>30</number>
+        </property>
+        <property name="rightMargin">
+         <number>30</number>
+        </property>
+        <property name="bottomMargin">
+         <number>30</number>
+        </property>
+        <item>
+         <widget class="QGroupBox" name="planningGroup">
+          <property name="title">
+           <string></string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_planning">
+           <property name="spacing">
+            <number>15</number>
+           </property>
+           <property name="leftMargin">
+            <number>20</number>
+           </property>
+           <property name="topMargin">
+            <number>20</number>
+           </property>
+           <property name="rightMargin">
+            <number>20</number>
+           </property>
+           <property name="bottomMargin">
+            <number>20</number>
+           </property>
+           <item>
+            <layout class="QVBoxLayout" name="fromStopLayout">
+             <property name="spacing">
+              <number>8</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="fromStopLabel">
+               <property name="text">
+                <string>Station für die Abfahrt auswählen:</string>
+               </property>
+               <property name="styleSheet">
+                <string>color: #333; font-size: 13px;</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="fromStopComboBox">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>35</height>
+                </size>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QVBoxLayout" name="toStopLayout">
+             <property name="spacing">
+              <number>8</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="toStopLabel">
+               <property name="text">
+                <string>Ziel auswählen:</string>
+               </property>
+               <property name="styleSheet">
+                <string>color: #333; font-size: 13px;</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="toStopComboBox">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>35</height>
+                </size>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QVBoxLayout" name="timeLayout">
+             <property name="spacing">
+              <number>8</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="timeLabel">
+               <property name="text">
+                <string>Gewünschte Abfahrtszeit:</string>
+               </property>
+               <property name="styleSheet">
+                <string>color: #333; font-size: 13px;</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QTimeEdit" name="departureTimeEdit">
+               <property name="minimumSize">
+                <size>
+                 <width>150</width>
+                 <height>35</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>200</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="displayFormat">
+                <string>HH:mm</string>
+               </property>
+               <property name="time">
+                <time>
+                 <hour>0</hour>
+                 <minute>0</minute>
+                 <second>0</second>
+                </time>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="buttonLayout">
+             <item>
+              <spacer name="buttonSpacer">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QPushButton" name="calculateRouteButton">
+               <property name="minimumSize">
+                <size>
+                 <width>150</width>
+                 <height>40</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>Route berechnen</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="buttonSpacer2">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="resultGroup">
+          <property name="title">
+           <string>Ihre Route:</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_result">
+           <property name="leftMargin">
+            <number>20</number>
+           </property>
+           <property name="topMargin">
+            <number>20</number>
+           </property>
+           <property name="rightMargin">
+            <number>20</number>
+           </property>
+           <property name="bottomMargin">
+            <number>20</number>
+           </property>
+           <item>
+            <widget class="QTableView" name="stopTimeTableView">
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>200</height>
+              </size>
+             </property>
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+             <property name="selectionBehavior">
+              <enum>QAbstractItemView::SelectRows</enum>
+             </property>
+             <property name="verticalScrollMode">
+              <enum>QAbstractItemView::ScrollPerPixel</enum>
+             </property>
+             <property name="horizontalScrollMode">
+              <enum>QAbstractItemView::ScrollPerPixel</enum>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="scheduleTab">
+       <attribute name="title">
+        <string>Fahrplan</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_schedule">
+        <property name="spacing">
+         <number>20</number>
+        </property>
+        <property name="leftMargin">
+         <number>30</number>
+        </property>
+        <property name="topMargin">
+         <number>30</number>
+        </property>
+        <property name="rightMargin">
+         <number>30</number>
+        </property>
+        <property name="bottomMargin">
+         <number>30</number>
+        </property>
+        <item>
+         <layout class="QVBoxLayout" name="routeSelectionLayout">
+          <property name="spacing">
+           <number>15</number>
+          </property>
+          <item>
+           <layout class="QVBoxLayout" name="routeLayout">
+            <property name="spacing">
+             <number>8</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="routeLabel">
+              <property name="text">
+               <string>Linie auswählen:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="routeComboBox">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>35</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="tripLayout">
+            <property name="spacing">
+             <number>8</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="tripLabel">
+              <property name="text">
+               <string>Fahrt auswählen:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="tripComboBox">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>35</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="searchLayout">
+            <property name="spacing">
+             <number>8</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="searchLabel">
+              <property name="text">
+               <string>Suchergebnisse filtern:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="searchTextEdit">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>35</height>
+               </size>
+              </property>
+              <property name="placeholderText">
+               <string>Station suchen...</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QVBoxLayout" name="scheduleResultLayout">
+          <property name="spacing">
+           <number>15</number>
+          </property>
+          <item>
+           <widget class="QLabel" name="scheduleResultLabel">
+            <property name="text">
+             <string>Fahrplan:</string>
+            </property>
+            <property name="styleSheet">
+             <string>font-weight: bold; font-size: 14px;</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QTableView" name="scheduleTableView">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>300</height>
+             </size>
+            </property>
+            <property name="alternatingRowColors">
+             <bool>true</bool>
+            </property>
+            <property name="selectionBehavior">
+             <enum>QAbstractItemView::SelectRows</enum>
+            </property>
+            <property name="verticalScrollMode">
+             <enum>QAbstractItemView::ScrollPerPixel</enum>
+            </property>
+            <property name="horizontalScrollMode">
+             <enum>QAbstractItemView::ScrollPerPixel</enum>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
